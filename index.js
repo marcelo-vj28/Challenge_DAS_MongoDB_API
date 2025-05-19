@@ -22,11 +22,18 @@ const server = http.createServer(async (req, res) => {
   const path = parsedUrl.pathname;
   const method = req.method;
 
-  // Configurar cabeçalhos de resposta
+  // Configurar cabeçalhos CORS para todas as respostas
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Lidar com solicitações OPTIONS (preflight)
+  if (method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
 
   // Conectar ao MongoDB
   const client = new MongoClient(MONGODB_URI);
@@ -48,6 +55,18 @@ const server = http.createServer(async (req, res) => {
       const pacientes = await collection.find(query).toArray();
       res.writeHead(200);
       res.end(JSON.stringify(pacientes));
+    }
+    // GET /pacientes/:id (Buscar paciente por ID)
+    else if (method === 'GET' && path.startsWith('/pacientes/')) {
+      const id = parseInt(path.split('/')[2]);
+      const paciente = await collection.findOne({ pacienteId: id });
+      if (paciente) {
+        res.writeHead(200);
+        res.end(JSON.stringify(paciente));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Paciente não encontrado' }));
+      }
     }
     // POST /pacientes (Criar paciente)
     else if (method === 'POST' && path === '/pacientes') {
